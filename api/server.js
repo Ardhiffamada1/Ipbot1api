@@ -1,12 +1,8 @@
-const express = require('express');
 const axios = require('axios');
 const cheerio = require('cheerio');
 
-const app = express();
-const port = 3000;
-
-app.get('/check', (req, res) => {
-  const ip = req.query.ip;
+export default async function handler(req, res) {
+  const { ip } = req.query;
 
   if (!ip) {
     return res.status(400).json({ error: 'IP address is required' });
@@ -14,11 +10,14 @@ app.get('/check', (req, res) => {
 
   const url = `https://scamalytics.com/ip/${ip}`;
 
-  axios.get(url)
-    .then(response => extractData(response.data))
-    .then(data => res.json(data))
-    .catch(error => res.status(500).json({ error: error.message }));
-});
+  try {
+    const response = await axios.get(url);
+    const data = extractData(response.data);
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
 
 function extractData(html) {
   const $ = cheerio.load(html);
@@ -46,26 +45,19 @@ function extractData(html) {
       server: '',
       publicProxy: '',
       webProxy: '',
-      searchEngineRobot: '',
-      anonymizingvpn: '',
-      torexitnode: '',
-      publicproxy: '',
-      webproxy: '',
-      searchenginerobot: ''
+      searchEngineRobot: ''
     },
     domainNames: [],
     botStatus: [],
-    score: '',  // Add score property to the data object
+    score: '',
     countryFlag: []
   };
 
-  // Extract score from the preformatted JSON-like content
   const scoreMatch = $('pre').text().match(/"score":"(\d+)"/);
   if (scoreMatch) {
-    data.score = scoreMatch[1]; // Store the score value
+    data.score = scoreMatch[1];
   }
 
-  // Extract other data as per your previous implementation
   $('table tr').each((index, element) => {
     const th = $(element).find('th').text().trim();
     const td = $(element).find('td').text().trim();
@@ -138,14 +130,9 @@ function extractData(html) {
     data.botStatus.push('No');
   }
 
-  // Adding country flag URL
   const countryCode = data.location.countryCode.toLowerCase();
   const countryFlagURL = `https://flagcdn.com/${countryCode}.svg`;
   data.countryFlag.push(countryFlagURL);
 
   return data;
 }
-
-app.listen(port, () => {
-  console.log(`Server is listening at http://localhost:${port}`);
-});
