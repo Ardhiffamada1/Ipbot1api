@@ -1,7 +1,11 @@
+const express = require('express');
 const axios = require('axios');
 const cheerio = require('cheerio');
 
-module.exports = async (req, res) => {
+const app = express();
+const port = 3000;
+
+app.get('/check', (req, res) => {
   const ip = req.query.ip;
 
   if (!ip) {
@@ -10,15 +14,11 @@ module.exports = async (req, res) => {
 
   const url = `https://scamalytics.com/ip/${ip}`;
 
-  try {
-    const response = await axios.get(url);
-    const data = extractData(response.data);
-    res.json(data);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
+  axios.get(url)
+    .then(response => extractData(response.data))
+    .then(data => res.json(data))
+    .catch(error => res.status(500).json({ error: error.message }));
+});
 
 function extractData(html) {
   const $ = cheerio.load(html);
@@ -46,13 +46,26 @@ function extractData(html) {
       server: '',
       publicProxy: '',
       webProxy: '',
-      searchEngineRobot: ''
+      searchEngineRobot: '',
+      anonymizingvpn: '',
+      torexitnode: '',
+      publicproxy: '',
+      webproxy: '',
+      searchenginerobot: ''
     },
     domainNames: [],
     botStatus: [],
+    score: '',  // Add score property to the data object
     countryFlag: []
   };
 
+  // Extract score from the preformatted JSON-like content
+  const scoreMatch = $('pre').text().match(/"score":"(\d+)"/);
+  if (scoreMatch) {
+    data.score = scoreMatch[1]; // Store the score value
+  }
+
+  // Extract other data as per your previous implementation
   $('table tr').each((index, element) => {
     const th = $(element).find('th').text().trim();
     const td = $(element).find('td').text().trim();
@@ -132,3 +145,7 @@ function extractData(html) {
 
   return data;
 }
+
+app.listen(port, () => {
+  console.log(`Server is listening at http://localhost:${port}`);
+});
